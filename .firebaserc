@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "hrms-3abba"
+  },
+  "targets": {
+    "hrms-3abba": {
+      "hosting": {
+        "production": [
+          "hr-managementsys"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

@@ -338,25 +338,6 @@ export default function Users() {
         throw new Error('You must be logged in to delete users');
       }
       
-      // Get current user's document
-      const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
-      if (!currentUserDoc.exists()) {
-        throw new Error('User not found');
-      }
-      
-      const currentUserData = currentUserDoc.data();
-      const isSuperAdmin = currentUserData.role === 'SuperAdmin';
-      
-      // If not SuperAdmin, check specific permissions
-      if (!isSuperAdmin) {
-        const entity = userToDelete.role === 'Employee' ? 'employees' : 'applicants';
-        
-        // Check if user has delete permission for the entity
-        if (!hasPermission(currentUserData, 'delete', entity)) {
-          throw new Error(`You don't have permission to delete ${entity}`);
-        }
-      }
-      
       // Get the current user's ID token
       const idToken = await currentUser.getIdToken();
       
@@ -397,55 +378,6 @@ export default function Users() {
       [name]: value
     }));
   };
-  
-  // Check if current user can edit a specific user
-  const canEditUser = (user) => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) return false;
-    
-    // If current user is the same as the user being edited
-    if (currentUser.uid === user.id) return true;
-    
-    const currentUserData = users.find(u => u.id === currentUser.uid);
-    if (!currentUserData) return false;
-    
-    // SuperAdmin can edit anyone
-    if (currentUserData.role === 'SuperAdmin') return true;
-    
-    // Check specific permissions based on user role
-    const entity = user.role === 'Employee' ? 'employees' : 'applicants';
-    return hasPermission(currentUserData, 'update', entity);
-  };
-  
-  // Check if current user can delete a specific user
-  const canDeleteUser = (user) => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) return false;
-    
-    // Prevent users from deleting themselves
-    if (currentUser.uid === user.id) return false;
-    
-    const currentUserData = users.find(u => u.id === currentUser.uid);
-    if (!currentUserData) return false;
-    
-    // SuperAdmin can delete anyone (except themselves, handled above)
-    if (currentUserData.role === 'SuperAdmin') return true;
-    
-    // Check specific permissions based on user role
-    const entity = user.role === 'Employee' ? 'employees' : 'applicants';
-    return hasPermission(currentUserData, 'delete', entity);
-  };
-
-  // Helper function to check user permissions
-  const hasPermission = (user, action, entity) => {
-    if (!user) return false;
-    if (user.role === 'SuperAdmin') return true;
-    
-    const entityPermissions = user.permissions?.[entity];
-    if (!entityPermissions) return false;
-    
-    return entityPermissions[action] === true;
-  };
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -458,23 +390,9 @@ export default function Users() {
         throw new Error('You must be logged in to update user data');
       }
       
-      // Get current user's document
       const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
-      if (!currentUserDoc.exists()) {
-        throw new Error('User not found');
-      }
-      
-      const currentUserData = currentUserDoc.data();
-      const isSuperAdmin = currentUserData.role === 'SuperAdmin';
-      
-      // If not SuperAdmin, check specific permissions
-      if (!isSuperAdmin) {
-        const entity = editingUser.role === 'Employee' ? 'employees' : 'applicants';
-        
-        // Check if user has update permission for the entity
-        if (!hasPermission(currentUserData, 'update', entity)) {
-          throw new Error(`You don't have permission to update ${entity}`);
-        }
+      if (!currentUserDoc.exists() || currentUserDoc.data().role !== 'SuperAdmin') {
+        throw new Error('Only SuperAdmins can update user data');
       }
       
       const userRef = doc(db, 'users', editingUser.id);
@@ -665,19 +583,17 @@ export default function Users() {
                                     style={{
                                       background: 'none',
                                       border: 'none',
-                                      cursor: canEditUser(row) ? 'pointer' : 'not-allowed',
-                                      color: canEditUser(row) ? '#880808' : '#ccc',
+                                      cursor: 'pointer',
+                                      color: '#880808',
                                       fontSize: '16px',
                                       padding: '4px 8px',
                                       borderRadius: '4px',
                                       display: 'flex',
                                       alignItems: 'center',
-                                      gap: '4px',
-                                      opacity: canEditUser(row) ? 1 : 0.5
+                                      gap: '4px'
                                     }}
-                                    title={canEditUser(row) ? 'Edit User' : 'No edit permission'}
-                                    onClick={() => canEditUser(row) && handleEditUser(row)}
-                                    disabled={!canEditUser(row)}
+                                    title="Edit User"
+                                    onClick={() => handleEditUser(row)}
                                   >
                                     <Pencil size={16} />
                                   </button>
@@ -703,8 +619,8 @@ export default function Users() {
                                     style={{
                                       background: 'none',
                                       border: 'none',
-                                      cursor: canDeleteUser(row) ? 'pointer' : 'not-allowed',
-                                      color: canDeleteUser(row) ? '#dc3545' : '#ffb3b3',
+                                      cursor: 'pointer',
+                                      color: '#dc3545',
                                       fontSize: '16px',
                                       padding: '4px 8px',
                                       borderRadius: '4px',
@@ -712,15 +628,13 @@ export default function Users() {
                                       alignItems: 'center',
                                       gap: '4px',
                                       transition: 'all 0.2s',
-                                      opacity: canDeleteUser(row) ? 1 : 0.5,
-                                      ':hover': canDeleteUser(row) ? {
+                                      ':hover': {
                                         color: '#a71d2a',
                                         transform: 'scale(1.1)'
-                                      } : {}
+                                      }
                                     }}
-                                    title={canDeleteUser(row) ? 'Delete User' : 'No delete permission'}
-                                    onClick={(e) => canDeleteUser(row) && handleDeleteClick(row, e)}
-                                    disabled={!canDeleteUser(row)}
+                                    title="Delete User"
+                                    onClick={(e) => handleDeleteClick(row, e)}
                                   >
                                     <Trash size={16} />
                                   </button>

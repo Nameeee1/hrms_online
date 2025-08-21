@@ -6,13 +6,13 @@ import { getFirestore } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyBm92k-jvKz0JnB8_vbMxTVwC95DPqc-7w",
-    authDomain: "hrms-3abba.firebaseapp.com",
-    projectId: "hrms-3abba",
-    storageBucket: "hrms-3abba.firebasestorage.app",
-    messagingSenderId: "944153999300",
-    appId: "1:944153999300:web:dc3315eb61ed2fb5799691"
-  };
+  apiKey: "AIzaSyBTW_Wk2JcveC6M-jsOm0GoSCVz8RdFe3s",
+  authDomain: "hhi-hrms-a52da.firebaseapp.com",
+  projectId: "hhi-hrms-a52da",
+  storageBucket: "hhi-hrms-a52da.firebasestorage.app",
+  messagingSenderId: "250370095100",
+  appId: "1:250370095100:web:79ab5e6782abc4236d6479"
+};
 
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);

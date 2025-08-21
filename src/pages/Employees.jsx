@@ -140,7 +140,8 @@ export default function Employees() {
     referredBy: '',
     hiredDate: '',
     status: 'Active',
-    employmentStatus: ''
+    employmentStatus: '',
+    terminationDate: ''
   });
 
   const handleOpen = () => {
@@ -157,7 +158,8 @@ export default function Employees() {
       referredBy: '',
       hiredDate: '',
       status: 'Active',
-      employmentStatus: ''
+      employmentStatus: '',
+      terminationDate: ''
     });
     setOpen(true);
   };
@@ -253,7 +255,8 @@ export default function Employees() {
       referredBy: employee.referredBy || '',
       hiredDate: formatDateForInput(employee.hiredDate || ''),
       status: employee.status || 'Active',
-      employmentStatus: employee.employmentStatus || ''
+      employmentStatus: employee.employmentStatus || '',
+      terminationDate: formatDateForInput(employee.terminationDate || '')
     });
     setOpen(true);
   };
@@ -273,7 +276,8 @@ export default function Employees() {
       referredBy: employee.referredBy || '',
       hiredDate: formatDateForInput(employee.hiredDate || ''),
       status: employee.status || 'Active',
-      employmentStatus: employee.employmentStatus || ''
+      employmentStatus: employee.employmentStatus || '',
+      terminationDate: formatDateForInput(employee.terminationDate || '')
     });
     setOpen(true);
   };
@@ -314,6 +318,13 @@ export default function Employees() {
       return;
     }
 
+    // If status requires a termination date, ensure it's provided
+    const statusesRequiringTerminationDate = ['Terminated', 'Discontinued', 'Resigned'];
+    if (statusesRequiringTerminationDate.includes(formData.status) && !formData.terminationDate) {
+      enqueueSnackbar('Please provide a termination date', { variant: 'error' });
+      return;
+    }
+
     setLoading(true);
     
     try {
@@ -322,7 +333,11 @@ export default function Employees() {
         ...formData,
         name: `${formData.firstName} ${formData.lastName}`,
         updatedAt: serverTimestamp(),
-        status: formData.status || 'Active'
+        status: formData.status || 'Active',
+        // Only include terminationDate if status requires it
+        ...((formData.status === 'Terminated' || formData.status === 'Discontinued' || formData.status === 'Resigned') && { 
+          terminationDate: formData.terminationDate 
+        })
       };
 
       if (editingEmployee) {
@@ -376,6 +391,20 @@ export default function Employees() {
   const handleSearch = (event) => {
     setSearchTerm(event.target.value.toLowerCase());
     setPage(0);
+  };
+
+  // Get the appropriate date label based on status
+  const getDateLabel = () => {
+    switch(formData.status) {
+      case 'Terminated':
+        return 'Termination Date';
+      case 'Discontinued':
+        return 'Discontinuation Date';
+      case 'Resigned':
+        return 'Resignation Date';
+      default:
+        return 'End Date';
+    }
   };
 
   // Cache for employees data
@@ -891,82 +920,203 @@ export default function Employees() {
                     />
                   </Box>
 
-                  <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                    <FormControl fullWidth size="small">
-                      <InputLabel id="status-label">Status</InputLabel>
-                      <Select
-                        labelId="status-label"
-                        id="status"
-                        name="status"
-                        value={formData.status}
-                        label="Status"
-                        onChange={handleInputChange}
-                        disabled={viewingEmployee}
-                        sx={{
-                          '& .MuiSelect-select': {
-                            padding: '8.5px 14px',
-                            borderRadius: '8px',
-                          },
-                          '&.Mui-disabled': {
-                            backgroundColor: 'rgba(0, 0, 0, 0.02)',
-                            '& .MuiSelect-select': {
-                              color: 'rgba(0, 0, 0, 0.87)',
-                              WebkitTextFillColor: 'rgba(0, 0, 0, 0.87)',
-                            }
-                          },
-                        }}
-                      >
-                        {statusCategories.length > 0 ? (
-                          statusCategories.map((category) => (
-                            <MenuItem key={category.id} value={category.name}>
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Box 
-                                  sx={{
-                                    width: 12,
-                                    height: 12,
-                                    borderRadius: '50%',
-                                    backgroundColor: category.color || '#1890ff',
-                                    marginRight: 1
-                                  }}
-                                />
-                                {category.name}
-                              </Box>
-                            </MenuItem>
-                          ))
-                        ) : (
-                          <MenuItem value="Active">Active</MenuItem>
-                        )}
-                      </Select>
-                    </FormControl>
-                    <FormControl fullWidth size="small" variant="outlined" required>
-                      <InputLabel id="employment-status-label" sx={{ fontSize: '0.875rem' }}>Employment Status</InputLabel>
-                      <Select
-                        labelId="employment-status-label"
-                        id="employmentStatus"
-                        name="employmentStatus"
-                        value={formData.employmentStatus}
-                        label="Employment Status"
-                        onChange={handleInputChange}
-                        disabled={viewingEmployee}
-                        sx={{
-                          '& .MuiSelect-select': {
-                            padding: '8.5px 14px',
-                            borderRadius: '8px',
-                          },
-                          '&.Mui-disabled': {
-                            backgroundColor: 'rgba(0, 0, 0, 0.02)',
-                            '& .MuiSelect-select': {
-                              color: 'rgba(0, 0, 0, 0.87)',
-                              WebkitTextFillColor: 'rgba(0, 0, 0, 0.87)',
-                            }
-                          },
-                        }}
-                      >
-                        <MenuItem value="Intern">Intern</MenuItem>
-                        <MenuItem value="Probationary">Probationary</MenuItem>
-                        <MenuItem value="Regular">Regular</MenuItem>
-                      </Select>
-                    </FormControl>
+                  <Box sx={{ mb: 3 }}>
+                    {/* Status, Termination Date, and Employment Status Row */}
+                    {['Terminated', 'Discontinued', 'Resigned'].includes(formData.status) ? (
+                      <>
+                        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                          <FormControl size="small" sx={{ flex: 1, minWidth: '200px' }}>
+                            <InputLabel id="status-label">Status</InputLabel>
+                            <Select
+                              labelId="status-label"
+                              id="status"
+                              name="status"
+                              value={formData.status}
+                              label="Status"
+                              onChange={handleInputChange}
+                              disabled={viewingEmployee}
+                              sx={{
+                                '& .MuiSelect-select': {
+                                  padding: '8.5px 14px',
+                                  borderRadius: '8px',
+                                },
+                                '&.Mui-disabled': {
+                                  backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                                  '& .MuiSelect-select': {
+                                    color: 'rgba(0, 0, 0, 0.87)',
+                                    WebkitTextFillColor: 'rgba(0, 0, 0, 0.87)',
+                                  }
+                                },
+                              }}
+                            >
+                              {statusCategories.length > 0 ? (
+                                statusCategories.map((category) => (
+                                  <MenuItem key={category.id} value={category.name}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                      <Box 
+                                        sx={{
+                                          width: 12,
+                                          height: 12,
+                                          borderRadius: '50%',
+                                          backgroundColor: category.color || '#1890ff',
+                                          marginRight: 1
+                                        }}
+                                      />
+                                      {category.name}
+                                    </Box>
+                                  </MenuItem>
+                                ))
+                              ) : (
+                                <MenuItem value="Active">Active</MenuItem>
+                              )}
+                            </Select>
+                          </FormControl>
+                          <TextField
+                            fullWidth
+                            id="terminationDate"
+                            label={getDateLabel()}
+                            name="terminationDate"
+                            type="date"
+                            InputLabelProps={{
+                              shrink: true,
+                              style: { fontSize: '0.875rem' },
+                            }}
+                            value={formData.terminationDate || ''}
+                            onChange={handleInputChange}
+                            size="small"
+                            variant="outlined"
+                            required
+                            disabled={viewingEmployee}
+                            sx={{
+                              flex: 1,
+                              minWidth: '200px',
+                              '& .MuiOutlinedInput-root': {
+                                borderRadius: '8px',
+                                '&:hover fieldset': {
+                                  borderColor: viewingEmployee ? 'rgba(0, 0, 0, 0.23)' : 'primary.main',
+                                },
+                                '&.Mui-disabled': {
+                                  backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                                  '& input': {
+                                    color: 'rgba(0, 0, 0, 0.87)',
+                                    WebkitTextFillColor: 'rgba(0, 0, 0, 0.87)',
+                                  }
+                                },
+                              },
+                            }}
+                          />
+                        </Box>
+                        <FormControl size="small" variant="outlined" required sx={{ width: '200px' }}>
+                          <InputLabel id="employment-status-label" sx={{ fontSize: '0.875rem' }}>Employment Status</InputLabel>
+                          <Select
+                            labelId="employment-status-label"
+                            id="employmentStatus"
+                            name="employmentStatus"
+                            value={formData.employmentStatus}
+                            label="Employment Status"
+                            onChange={handleInputChange}
+                            disabled={viewingEmployee}
+                            sx={{
+                              '& .MuiSelect-select': {
+                                padding: '8.5px 14px',
+                                borderRadius: '8px',
+                              },
+                              '&.Mui-disabled': {
+                                backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                                '& .MuiSelect-select': {
+                                  color: 'rgba(0, 0, 0, 0.87)',
+                                  WebkitTextFillColor: 'rgba(0, 0, 0, 0.87)',
+                                }
+                              },
+                            }}
+                          >
+                            <MenuItem value=""><em>Select an option</em></MenuItem>
+                            <MenuItem value="Intern">Intern</MenuItem>
+                            <MenuItem value="Probationary">Probationary</MenuItem>
+                            <MenuItem value="Regular">Regular</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </>
+                    ) : (
+                      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                        <FormControl size="small" sx={{ flex: 1, minWidth: '200px' }}>
+                          <InputLabel id="status-label">Status</InputLabel>
+                          <Select
+                            labelId="status-label"
+                            id="status"
+                            name="status"
+                            value={formData.status}
+                            label="Status"
+                            onChange={handleInputChange}
+                            disabled={viewingEmployee}
+                            sx={{
+                              '& .MuiSelect-select': {
+                                padding: '8.5px 14px',
+                                borderRadius: '8px',
+                              },
+                              '&.Mui-disabled': {
+                                backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                                '& .MuiSelect-select': {
+                                  color: 'rgba(0, 0, 0, 0.87)',
+                                  WebkitTextFillColor: 'rgba(0, 0, 0, 0.87)',
+                                }
+                              },
+                            }}
+                          >
+                            {statusCategories.length > 0 ? (
+                              statusCategories.map((category) => (
+                                <MenuItem key={category.id} value={category.name}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Box 
+                                      sx={{
+                                        width: 12,
+                                        height: 12,
+                                        borderRadius: '50%',
+                                        backgroundColor: category.color || '#1890ff',
+                                        marginRight: 1
+                                      }}
+                                    />
+                                    {category.name}
+                                  </Box>
+                                </MenuItem>
+                              ))
+                            ) : (
+                              <MenuItem value="Active">Active</MenuItem>
+                            )}
+                          </Select>
+                        </FormControl>
+                        <FormControl size="small" sx={{ width: '200px' }} variant="outlined" required>
+                          <InputLabel id="employment-status-label" sx={{ fontSize: '0.875rem' }}>Employment Status</InputLabel>
+                          <Select
+                            labelId="employment-status-label"
+                            id="employmentStatus"
+                            name="employmentStatus"
+                            value={formData.employmentStatus}
+                            label="Employment Status"
+                            onChange={handleInputChange}
+                            disabled={viewingEmployee}
+                            sx={{
+                              '& .MuiSelect-select': {
+                                padding: '8.5px 14px',
+                                borderRadius: '8px',
+                              },
+                              '&.Mui-disabled': {
+                                backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                                '& .MuiSelect-select': {
+                                  color: 'rgba(0, 0, 0, 0.87)',
+                                  WebkitTextFillColor: 'rgba(0, 0, 0, 0.87)',
+                                }
+                              },
+                            }}
+                          >
+                            <MenuItem value=""><em>Select an option</em></MenuItem>
+                            <MenuItem value="Intern">Intern</MenuItem>
+                            <MenuItem value="Probationary">Probationary</MenuItem>
+                            <MenuItem value="Regular">Regular</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    )}
                   </Box>
                 </Box>
 
