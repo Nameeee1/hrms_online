@@ -3,11 +3,10 @@ import MenuList from '../components/MenuList';
 import Logo from '../components/logo';
 import "../css/sidebar.css";
 import { MainContent, DashboardHeader, StyledWrapper, StyledCard, DepartmentCard, CardContent, CardIcon, CardTitle, DepartmentCardTitle, DepartmentCardValue } from '../styles/DashboardStyle';
-import { Typography, Card, Row, Col, Spin } from 'antd';
-import { StyledSider } from '../styles/SiderStyle';
-import { Layout } from 'antd';
-import { collection, getCountFromServer, query, where } from 'firebase/firestore';
+import { Typography, Card, Row, Col, Spin, Modal, List, Avatar, Layout } from 'antd';
+import { collection, query, where, getDocs, getCountFromServer } from 'firebase/firestore';
 import { db } from '../js/firebase';
+import { StyledSider } from '../styles/SiderStyle';
 import { 
   Users, 
   Building2,
@@ -49,6 +48,50 @@ export default function Dashboard() {
     loading: loadingEmployees,
     refreshDashboardData 
   } = useDashboard();
+
+  // State for modal
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [employees, setEmployees] = useState([]);
+  const [loadingEmployeesList, setLoadingEmployeesList] = useState(false);
+
+  // Fetch employees in a department
+  const fetchEmployeesByDepartment = async (departmentName) => {
+    try {
+      setLoadingEmployeesList(true);
+      const employeesRef = collection(db, 'employees');
+      const q = query(
+        employeesRef, 
+        where('department', 'array-contains', departmentName),
+        where('status', '==', 'Active')
+      );
+      const querySnapshot = await getDocs(q);
+      
+      const employeesList = [];
+      querySnapshot.forEach((doc) => {
+        employeesList.push({ id: doc.id, ...doc.data() });
+      });
+      
+      setEmployees(employeesList);
+      setModalTitle(`Active Employees in ${departmentName}`);
+      setIsModalVisible(true);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    } finally {
+      setLoadingEmployeesList(false);
+    }
+  };
+
+  // Handle department card click
+  const handleDepartmentClick = (department) => {
+    fetchEmployeesByDepartment(department.name);
+  };
+
+  // Close modal
+  const handleCloseModal = () => {
+    setIsModalVisible(false);
+    setEmployees([]);
+  };
 
   // Colors for department cards
   const iconComponents = {
@@ -186,12 +229,18 @@ export default function Dashboard() {
                 <DepartmentCard 
                   hoverable
                   $iconColor={iconColor}
+                  onClick={() => handleDepartmentClick(dept)}
+                  style={{ cursor: 'pointer' }}
                   styles={{
                     body: {
                       padding: '16px',
                       display: 'flex',
                       flexDirection: 'column',
-                      height: '100%'
+                      height: '100%',
+                      transition: 'transform 0.2s',
+                      '&:hover': {
+                        transform: 'translateY(-4px)'
+                      }
                     }
                   }}
                 >
@@ -229,6 +278,63 @@ export default function Dashboard() {
         )}
       </Row>
     </StyledCard>
+
+    {/* Employees Modal */}
+    <Modal
+      title={modalTitle}
+      open={isModalVisible}
+      onCancel={handleCloseModal}
+      footer={null}
+      width={800}
+    >
+      {loadingEmployeesList ? (
+        <div style={{ textAlign: 'center', padding: '20px' }}>
+          <Spin size="large" />
+          <p>Loading employees...</p>
+        </div>
+      ) : employees.length > 0 ? (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f0f0f0' }}>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Employee</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Position</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Email</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Contact</th>
+              </tr>
+            </thead>
+            <tbody>
+              {employees.map((employee) => (
+                <tr key={employee.id} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <Avatar 
+                      style={{ 
+                        backgroundColor: '#1890ff',
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      size="large"
+                    >
+                      {employee.firstName?.charAt(0)}{employee.lastName?.charAt(0)}
+                    </Avatar>
+                    <span>{`${employee.firstName} ${employee.lastName}`}</span>
+                  </td>
+                  <td style={{ padding: '12px' }}>{employee.position || '-'}</td>
+                  <td style={{ padding: '12px' }}>{employee.email || '-'}</td>
+                  <td style={{ padding: '12px' }}>{employee.contactNumber || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', padding: '20px' }}>
+          No employees found in this department.
+        </div>
+      )}
+    </Modal>
   </div>
 </StyledWrapper>
       </MainContent>
