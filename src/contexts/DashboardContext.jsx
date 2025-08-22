@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, getCountFromServer, query, where } from 'firebase/firestore';
+import { collection, getCountFromServer, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../js/firebase';
 
 const DashboardContext = createContext();
@@ -9,6 +9,7 @@ export function DashboardProvider({ children }) {
     totalEmployees: 0,
     hhiCount: 0,
     rahyoCount: 0,
+    departmentCounts: {},
     loading: true,
     lastUpdated: null
   });
@@ -29,10 +30,24 @@ export function DashboardProvider({ children }) {
       const rahyoQuery = query(employeesRef, where('organization', '==', 'RAHYO'));
       const rahyoSnapshot = await getCountFromServer(rahyoQuery);
       
+      // Get all departments
+      const departmentsQuery = collection(db, 'departments');
+      const departmentsSnapshot = await getDocs(departmentsQuery);
+      const departmentCounts = {};
+      
+      // Get count for each department
+      for (const deptDoc of departmentsSnapshot.docs) {
+        const deptName = deptDoc.data().name;
+        const deptQuery = query(employeesRef, where('department', 'array-contains', deptName));
+        const countSnapshot = await getCountFromServer(deptQuery);
+        departmentCounts[deptName] = countSnapshot.data().count;
+      }
+      
       setDashboardData({
         totalEmployees: totalSnapshot.data().count,
         hhiCount: hhiSnapshot.data().count,
         rahyoCount: rahyoSnapshot.data().count,
+        departmentCounts,
         loading: false,
         lastUpdated: new Date()
       });

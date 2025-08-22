@@ -45,6 +45,7 @@ export default function Dashboard() {
     totalEmployees = 0, 
     hhiCount = 0, 
     rahyoCount = 0, 
+    departmentCounts = {},
     loading: loadingEmployees,
     refreshDashboardData 
   } = useDashboard();
@@ -209,7 +210,13 @@ export default function Dashboard() {
                   </CardContent>
                   <DepartmentCardValue>
                     <div className="label">Employees</div>
-                    <div className="value">0</div>
+                    <div className="value">
+                      {loadingEmployees ? (
+                        <Spin size="small" />
+                      ) : (
+                        (departmentCounts[dept.name] || 0).toLocaleString()
+                      )}
+                    </div>
                   </DepartmentCardValue>
                 </DepartmentCard>
               </Col>
