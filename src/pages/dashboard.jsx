@@ -34,46 +34,20 @@ import {
   Settings as SettingsIcon
 } from 'lucide-react';
 import { useDepartments } from '../contexts/DepartmentContext';
+import { useDashboard } from '../contexts/DashboardContext';
 
 const { Title } = Typography;
 
 export default function Dashboard() {
   const [collapsed, setCollapsed] = useState(true);
   const { departments, loading } = useDepartments();
-  const [totalEmployees, setTotalEmployees] = useState(0);
-  const [hhiCount, setHhiCount] = useState(0);
-  const [rahyoCount, setRahyoCount] = useState(0);
-  const [loadingEmployees, setLoadingEmployees] = useState(true);
-
-  useEffect(() => {
-    const fetchEmployeeCounts = async () => {
-      try {
-        setLoadingEmployees(true);
-        const employeesRef = collection(db, 'employees');
-        
-        // Get total count
-        const totalSnapshot = await getCountFromServer(employeesRef);
-        setTotalEmployees(totalSnapshot.data().count);
-        
-        // Get HHI count
-        const hhiQuery = query(employeesRef, where('organization', '==', 'HHI'));
-        const hhiSnapshot = await getCountFromServer(hhiQuery);
-        setHhiCount(hhiSnapshot.data().count);
-        
-        // Get RAHYO count
-        const rahyoQuery = query(employeesRef, where('organization', '==', 'RAHYO'));
-        const rahyoSnapshot = await getCountFromServer(rahyoQuery);
-        setRahyoCount(rahyoSnapshot.data().count);
-        
-      } catch (error) {
-        console.error('Error fetching employee counts:', error);
-      } finally {
-        setLoadingEmployees(false);
-      }
-    };
-
-    fetchEmployeeCounts();
-  }, []);
+  const { 
+    totalEmployees = 0, 
+    hhiCount = 0, 
+    rahyoCount = 0, 
+    loading: loadingEmployees,
+    refreshDashboardData 
+  } = useDashboard();
 
   // Colors for department cards
   const iconComponents = {

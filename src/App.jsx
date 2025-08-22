@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { SnackbarProvider } from 'notistack';
 import { DepartmentProvider } from './contexts/DepartmentContext';
 import { StatusCategoryProvider } from './contexts/StatusCategoryContext';
+import { DashboardProvider } from './contexts/DashboardContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -54,68 +55,70 @@ function AppContent() {
         }}
         autoHideDuration={3000}
       >
-        <DepartmentProvider>
-          <StatusCategoryProvider>
-            <Routes>
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute user={currentUser}>
-                  <Navigate to="/dashboard" replace />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute user={currentUser}>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/employees"
-              element={
-                <ProtectedRoute user={currentUser}>
-                  <Employees />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/applicants"
-              element={
-                <ProtectedRoute user={currentUser}>
-                  <Applicants />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/users"
-              element={
-                <ProtectedRoute user={currentUser}>
-                  <Users />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute user={currentUser}>
-                  <Settings />
-                </ProtectedRoute>
-              }
-            />
-            <Route 
-              path="/login" 
-              element={currentUser ? <Navigate to="/dashboard" /> : <Auth />} 
-            />
-            <Route 
-              path="*" 
-              element={<Navigate to={currentUser ? "/dashboard" : "/login"} />} 
-            />
-            </Routes>
-          </StatusCategoryProvider>
-        </DepartmentProvider>
+        <DashboardProvider>
+          <DepartmentProvider>
+            <StatusCategoryProvider>
+              <Routes>
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute user={currentUser}>
+                    <Navigate to="/dashboard" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute user={currentUser}>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/employees"
+                element={
+                  <ProtectedRoute user={currentUser}>
+                    <Employees />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/applicants"
+                element={
+                  <ProtectedRoute user={currentUser}>
+                    <Applicants />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/users"
+                element={
+                  <ProtectedRoute user={currentUser}>
+                    <Users />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute user={currentUser}>
+                    <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route 
+                path="/login" 
+                element={currentUser ? <Navigate to="/dashboard" /> : <Auth />} 
+              />
+              <Route 
+                path="*" 
+                element={<Navigate to={currentUser ? "/dashboard" : "/login"} />} 
+              />
+              </Routes>
+            </StatusCategoryProvider>
+          </DepartmentProvider>
+        </DashboardProvider>
       </SnackbarProvider>
     </ThemeProvider>
   );
