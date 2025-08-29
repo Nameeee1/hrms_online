@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Typography, Layout } from 'antd';
 import { useSnackbar } from 'notistack';
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../js/firebase';
-import { Search, Plus, Eye, Pencil, Trash, X } from 'lucide-react';
+import { Search, Plus, Eye, Pencil, Trash, X, ChevronDown, Filter } from 'lucide-react';
 import MenuList from '../components/MenuList';
 import Logo from '../components/logo';
 import "../css/sidebar.css";
@@ -61,16 +61,20 @@ const modalStyle = {
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
-  width: 480,
+  width: 500,
   bgcolor: 'background.paper',
   boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
   p: 0,
   borderRadius: '12px',
   outline: 'none',
   overflow: 'hidden',
+  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Oxygen, Ubuntu, sans-serif',
   transition: 'all 0.3s ease-in-out',
   '&:focus': {
     outline: 'none',
+  },
+  '& *': {
+    fontFamily: 'inherit',
   },
 };
 
@@ -81,12 +85,58 @@ const headerStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
+  '& h2': {
+    fontSize: '1.25rem',
+    fontWeight: 600,
+    margin: 0,
+    color: '#1a1a1a',
+    fontFamily: 'inherit',
+  },
 };
 
 const formStyle = {
   p: 3,
   maxHeight: '70vh',
   overflowY: 'auto',
+  '& h6': {
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: '#333',
+    margin: '24px 0 16px',
+    fontFamily: 'inherit',
+    '&:first-of-type': {
+      marginTop: 0,
+    },
+  },
+  '& .MuiFormLabel-root': {
+    fontSize: '0.875rem',
+    color: '#555',
+    '&.Mui-focused': {
+      color: '#1976d2',
+    },
+  },
+  '& .MuiInputBase-input': {
+    fontSize: '0.9375rem',
+    padding: '10px 12px',
+    color: '#1a1a1a',
+    '&::placeholder': {
+      color: '#999',
+      opacity: 1,
+    },
+  },
+  '& .MuiOutlinedInput-root': {
+    '& fieldset': {
+      borderColor: '#ddd',
+      transition: 'border-color 0.2s',
+    },
+    '&:hover fieldset': {
+      borderColor: '#999',
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: '#1976d2',
+      borderWidth: '1px',
+    },
+  },
   '&::-webkit-scrollbar': {
     width: '6px',
   },
@@ -110,6 +160,19 @@ const footerStyle = {
   justifyContent: 'flex-end',
   gap: 2,
   backgroundColor: '#f8f9fa',
+  '& .MuiButton-root': {
+    textTransform: 'none',
+    fontWeight: 500,
+    fontSize: '0.875rem',
+    padding: '6px 16px',
+    borderRadius: '6px',
+    '&.MuiButton-contained': {
+      boxShadow: 'none',
+      '&:hover': {
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+      },
+    },
+  },
 };
 
 export default function Applicants() {
@@ -117,6 +180,9 @@ export default function Applicants() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const [open, setOpen] = useState(false);
@@ -343,16 +409,54 @@ export default function Applicants() {
     setApplicantToDelete(null);
   };
 
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterRef.current && !filterRef.current.contains(event.target)) {
+        setFilterOpen(false);
+      }
+    };
+
+    if (filterOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [filterOpen]);
+
   const filteredRows = rows.filter((row) => {
     if (!row) return false;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      (row.fullName?.toLowerCase().includes(searchLower)) ||
-      (row.position?.toLowerCase().includes(searchLower)) ||
-      (row.email?.toLowerCase().includes(searchLower)) ||
-      (row.applicationStatus?.toLowerCase().includes(searchLower))
-    );
+    
+    // Apply status filter
+    if (statusFilter !== 'all' && row.applicationStatus !== statusFilter) {
+      return false;
+    }
+    
+    // Apply search term filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        (row.fullName?.toLowerCase().includes(searchLower)) ||
+        (row.position?.toLowerCase().includes(searchLower)) ||
+        (row.email?.toLowerCase().includes(searchLower)) ||
+        (row.applicationStatus?.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    return true;
   });
+  
+  const statusOptions = [
+    { value: 'all', label: 'All Statuses' },
+    { value: 'Passed', label: 'Passed' },
+    { value: 'In-Progress', label: 'In Progress' },
+    { value: 'Rejected', label: 'Rejected' },
+    { value: 'Callback', label: 'Callback' }
+  ];
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
@@ -396,22 +500,143 @@ export default function Applicants() {
         <Card sx={{ boxShadow: '0 0 2px 0 rgba(145, 158, 171, 0.2), 0 12px 24px -4px rgba(145, 158, 171, 0.12)', borderRadius: 2, overflow: 'hidden' }}>
           <Box sx={{ pt: '12px', px: '24px', pb: '-30px', borderBottom: '1px solid rgba(145, 158, 171, 0.24)' }}>
             <TableToolbar>
-              <SearchContainer>
-                <SearchInput 
-                  placeholder="Search applicants..." 
-                  value={searchTerm}
-                  onChange={handleSearch}
-                  name="search"
-                  type="search"
-                />
-                <SearchIcon>
-                  <Search size={18} />
-                </SearchIcon>
-              </SearchContainer>
-              <AddButton onClick={handleOpen}>
-                <Plus size={18} style={{ marginRight: 8 }} />
-                Add Applicant
-              </AddButton>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between',
+                width: '100%',
+                alignItems: 'center'
+              }}>
+                <SearchContainer style={{ flex: 1, maxWidth: '400px' }}>
+                  <SearchInput 
+                    placeholder="Search applicants..." 
+                    value={searchTerm}
+                    onChange={handleSearch}
+                    name="search"
+                    type="search"
+                  />
+                  <SearchIcon>
+                    <Search size={18} />
+                  </SearchIcon>
+                </SearchContainer>
+                
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '8px', 
+                  alignItems: 'center',
+                  marginLeft: 'auto',
+                  position: 'relative'
+                }}>
+                {statusFilter !== 'all' && (
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '4px 12px',
+                    backgroundColor: '#f0f0f0',
+                    borderRadius: '16px',
+                    fontSize: '0.875rem',
+                    marginRight: '8px'
+                  }}>
+                    <span>Filtered by: {statusFilter}</span>
+                    <button 
+                      onClick={() => setStatusFilter('all')}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#666',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '2px'
+                      }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                <div style={{ position: 'relative' }} ref={filterRef}>
+                  <button 
+                    onClick={() => setFilterOpen(!filterOpen)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      backgroundColor: '#fff',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: '#333',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        backgroundColor: '#f5f5f5',
+                        borderColor: '#bdbdbd'
+                      }
+                    }}
+                  >
+                    <Filter size={16} />
+                    <span>Filter</span>
+                    <ChevronDown size={16} style={{
+                      transform: filterOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease-in-out'
+                    }} />
+                  </button>
+                  
+                  {filterOpen && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      right: 0,
+                      backgroundColor: '#fff',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                      padding: '8px 0',
+                      minWidth: '200px',
+                      zIndex: 1000,
+                      border: '1px solid #e0e0e0'
+                    }}>
+                      <div style={{ 
+                        padding: '8px 16px',
+                        color: '#666',
+                        fontSize: '0.875rem',
+                        fontWeight: 500
+                      }}>
+                        Filter by Status
+                      </div>
+                      {statusOptions.map((option) => (
+                        <div 
+                          key={option.value}
+                          onClick={() => {
+                            setStatusFilter(option.value);
+                            setFilterOpen(false);
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            backgroundColor: statusFilter === option.value ? '#f0f0f0' : 'transparent',
+                            '&:hover': {
+                              backgroundColor: '#f5f5f5'
+                            }
+                          }}
+                        >
+                          {option.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                <AddButton onClick={handleOpen}>
+                  <Plus size={18} style={{ marginRight: 8 }} />
+                  Add Applicant
+                </AddButton>
+                </div>
+              </div>
               
               <Modal
                 open={open}
@@ -504,10 +729,22 @@ export default function Applicants() {
                         size="small"
                         variant="outlined"
                         multiline
-                        rows={2}
+                        minRows={2}
+                        maxRows={4}
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             borderRadius: '8px',
+                            '& textarea': {
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word',
+                              lineHeight: '1.5',
+                            },
+                            '&.Mui-disabled': {
+                              '& textarea': {
+                                color: 'rgba(0, 0, 0, 0.87)',
+                                WebkitTextFillColor: 'rgba(0, 0, 0, 0.87)',
+                              }
+                            },
                           },
                         }}
                       />
@@ -544,6 +781,17 @@ export default function Applicants() {
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             borderRadius: '8px',
+                            '& input': {
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-all',
+                              lineHeight: '1.5',
+                            },
+                            '&.Mui-disabled': {
+                              '& input': {
+                                color: 'rgba(0, 0, 0, 0.87)',
+                                WebkitTextFillColor: 'rgba(0, 0, 0, 0.87)',
+                              }
+                            },
                           },
                         }}
                       />

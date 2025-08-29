@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, X, Pencil, Eye, Trash } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Plus, X, Pencil, Eye, Trash, ChevronDown } from 'lucide-react';
+import Avatar from '@mui/material/Avatar';
 import { Typography, Layout } from 'antd';
 import { useSnackbar } from 'notistack';
 import { collection, addDoc, updateDoc, doc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
@@ -38,27 +39,61 @@ import {
   SearchInput,
   SearchIcon,
   TableToolbar,
-  AddButton
+  AddButton,
+  FilterButton
 } from '../styles/EmployeesStyle';
 import { StyledSider } from '../styles/SiderStyle';
 
 const { Title } = Typography;
+
+// Function to generate a color from a string
+function stringToColor(string) {
+  let hash = 0;
+  let i;
+
+  for (i = 0; i < string.length; i += 1) {
+    hash = string.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  let color = '#';
+
+  for (i = 0; i < 3; i += 1) {
+    const value = (hash >> (i * 8)) & 0xff;
+    color += `00${value.toString(16)}`.slice(-2);
+  }
+
+  return color;
+}
+
+// Function to get initials from a name
+function getInitials(name) {
+  if (!name || name === 'N/A') return '?';
+  
+  const nameParts = name.split(' ');
+  if (nameParts.length === 1) return nameParts[0].charAt(0).toUpperCase();
+  
+  return `${nameParts[0].charAt(0)}${nameParts[nameParts.length - 1].charAt(0)}`.toUpperCase();
+}
 
 const modalStyle = {
   position: 'absolute',
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
-  width: 480,
+  width: 500,
   bgcolor: 'background.paper',
   boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
   p: 0,
   borderRadius: '12px',
   outline: 'none',
   overflow: 'hidden',
+  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Oxygen, Ubuntu, sans-serif',
   transition: 'all 0.3s ease-in-out',
   '&:focus': {
     outline: 'none',
+  },
+  '& *': {
+    fontFamily: 'inherit',
   },
 };
 
@@ -69,12 +104,58 @@ const headerStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
+  '& h2': {
+    fontSize: '1.25rem',
+    fontWeight: 600,
+    margin: 0,
+    color: '#1a1a1a',
+    fontFamily: 'inherit',
+  },
 };
 
 const formStyle = {
   p: 3,
   maxHeight: '70vh',
   overflowY: 'auto',
+  '& h6': {
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: '#333',
+    margin: '24px 0 16px',
+    fontFamily: 'inherit',
+    '&:first-of-type': {
+      marginTop: 0,
+    },
+  },
+  '& .MuiFormLabel-root': {
+    fontSize: '0.875rem',
+    color: '#555',
+    '&.Mui-focused': {
+      color: '#1976d2',
+    },
+  },
+  '& .MuiInputBase-input': {
+    fontSize: '0.9375rem',
+    padding: '10px 12px',
+    color: '#1a1a1a',
+    '&::placeholder': {
+      color: '#999',
+      opacity: 1,
+    },
+  },
+  '& .MuiOutlinedInput-root': {
+    '& fieldset': {
+      borderColor: '#ddd',
+      transition: 'border-color 0.2s',
+    },
+    '&:hover fieldset': {
+      borderColor: '#999',
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: '#1976d2',
+      borderWidth: '1px',
+    },
+  },
   '&::-webkit-scrollbar': {
     width: '6px',
   },
@@ -98,6 +179,19 @@ const footerStyle = {
   justifyContent: 'flex-end',
   gap: 2,
   backgroundColor: '#f8f9fa',
+  '& .MuiButton-root': {
+    textTransform: 'none',
+    fontWeight: 500,
+    fontSize: '0.875rem',
+    padding: '6px 16px',
+    borderRadius: '6px',
+    '&.MuiButton-contained': {
+      boxShadow: 'none',
+      '&:hover': {
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+      },
+    },
+  },
 };
 
 const columns = [
@@ -122,9 +216,12 @@ export default function Employees() {
   const [statusCategories, setStatusCategories] = useState([]);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [viewingEmployee, setViewingEmployee] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef(null);
   const [formData, setFormData] = useState({
     // Personal Details
     firstName: '',
@@ -457,20 +554,46 @@ export default function Employees() {
   
   // Filter employees based on search term
   const filteredRows = useMemo(() => {
-    if (!searchTerm) return cachedEmployees;
+    let result = [...cachedEmployees];
     
-    const searchLower = searchTerm.toLowerCase();
-    return cachedEmployees.filter(employee => 
-      (employee.name && employee.name.toLowerCase().includes(searchLower)) ||
-      (employee.email && employee.email.toLowerCase().includes(searchLower)) ||
-      (employee.employmentStatus && employee.employmentStatus.toLowerCase().includes(searchLower)) ||
-      (employee.department && employee.department.some(dept => 
-        dept.toLowerCase().includes(searchLower)
-      ))
-    );
-  }, [cachedEmployees, searchTerm]);
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      result = result.filter(employee => employee.status === statusFilter);
+    }
+    
+    // Apply search term filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      result = result.filter(employee => 
+        (employee.name && employee.name.toLowerCase().includes(searchLower)) ||
+        (employee.email && employee.email.toLowerCase().includes(searchLower)) ||
+        (employee.employmentStatus && employee.employmentStatus.toLowerCase().includes(searchLower)) ||
+        (employee.department && employee.department.some(dept => 
+          dept.toLowerCase().includes(searchLower)
+        ))
+      );
+    }
+    
+    return result;
+  }, [cachedEmployees, searchTerm, statusFilter]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterRef.current && !filterRef.current.contains(event.target)) {
+        setFilterOpen(false);
+      }
+    };
 
+    if (filterOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [filterOpen]);
 
   return (
     <Layout style={{ minHeight: '100vh', backgroundColor: '#f0f2f5' }}>
@@ -513,10 +636,153 @@ export default function Employees() {
                 />
               </SearchIcon>
             </SearchContainer>
-            <AddButton onClick={handleOpen}>
-              <Plus size={18} />
-              Add Employee
-            </AddButton>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {statusFilter !== 'all' && (
+                <div style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginRight: '8px',
+                  fontSize: '0.875rem',
+                  color: '#666'
+                }}>
+                  <span>Filtered by: </span>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    backgroundColor: '#f0f0f0',
+                    padding: '4px 12px',
+                    borderRadius: '16px',
+                    fontSize: '0.8125rem'
+                  }}>
+                    <div style={{
+                      width: '10px',
+                      height: '10px',
+                      borderRadius: '50%',
+                      backgroundColor: statusCategories.find(cat => cat.name === statusFilter)?.color || '#1890ff'
+                    }} />
+                    {statusFilter}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setStatusFilter('all');
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#999',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '2px'
+                      }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div style={{ position: 'relative' }} ref={filterRef}>
+                <FilterButton 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFilterOpen(!filterOpen);
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4 6H20M7 12H17M10 18H14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Filter
+                  <ChevronDown size={16} style={{
+                    transform: filterOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.2s ease-in-out'
+                  }} />
+                </FilterButton>
+                {filterOpen && (
+                  <div 
+                    style={{
+                      position: 'fixed',
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                      padding: '8px 0',
+                      minWidth: '220px',
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      zIndex: 1400, // Higher than table
+                      border: '1px solid #e0e0e0',
+                      pointerEvents: 'auto',
+                      transform: 'translateY(8px)' // Add small offset from button
+                    }}
+                    onClick={(e) => e.stopPropagation()} // Prevent click from closing dropdown
+                  >
+                    <div style={{ 
+                      padding: '8px 16px',
+                      color: '#666',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      borderBottom: '1px solid #eee',
+                      marginBottom: '4px'
+                    }}>
+                      Status
+                    </div>
+                    <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                      <div 
+                        style={{
+                          padding: '8px 16px',
+                          cursor: 'pointer',
+                          backgroundColor: statusFilter === 'all' ? '#f5f5f5' : 'transparent',
+                          '&:hover': {
+                            backgroundColor: '#f5f5f5'
+                          }
+                        }}
+                        onClick={() => {
+                          setStatusFilter('all');
+                          setFilterOpen(false);
+                        }}
+                      >
+                        All Statuses
+                      </div>
+                      {statusCategories.map((category) => (
+                        <div 
+                          key={category.id}
+                          style={{
+                            padding: '8px 16px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            backgroundColor: statusFilter === category.name ? '#f5f5f5' : 'transparent',
+                            '&:hover': {
+                              backgroundColor: '#f5f5f5'
+                            }
+                          }}
+                          onClick={() => {
+                            setStatusFilter(category.name);
+                            setFilterOpen(false);
+                          }}
+                        >
+                          <div style={{
+                            width: '12px',
+                            height: '12px',
+                            borderRadius: '50%',
+                            backgroundColor: category.color || '#1890ff'
+                          }} />
+                          {category.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <AddButton onClick={handleOpen}>
+                <Plus size={18} />
+                Add Employee
+              </AddButton>
+            </div>
+
             
             <Modal
               open={open}
@@ -669,15 +935,24 @@ export default function Employees() {
                       size="small"
                       variant="outlined"
                       disabled={viewingEmployee}
+                      multiline
+                      minRows={2}
+                      maxRows={4}
                       sx={{
                         '& .MuiOutlinedInput-root': {
                           borderRadius: '8px',
+                          alignItems: 'flex-start',
+                          '& textarea': {
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            lineHeight: '1.5',
+                          },
                           '&:hover fieldset': {
                             borderColor: viewingEmployee ? 'rgba(0, 0, 0, 0.23)' : 'primary.main',
                           },
                           '&.Mui-disabled': {
                             backgroundColor: 'rgba(0, 0, 0, 0.02)',
-                            '& input': {
+                            '& textarea': {
                               color: 'rgba(0, 0, 0, 0.87)',
                               WebkitTextFillColor: 'rgba(0, 0, 0, 0.87)',
                             }
@@ -738,6 +1013,11 @@ export default function Employees() {
                       sx={{
                         '& .MuiOutlinedInput-root': {
                           borderRadius: '8px',
+                          '& input': {
+                            whiteSpace: 'normal',
+                            wordBreak: 'break-all',
+                            lineHeight: '1.5',
+                          },
                           '&:hover fieldset': {
                             borderColor: viewingEmployee ? 'rgba(0, 0, 0, 0.23)' : 'primary.main',
                           },
@@ -1202,7 +1482,9 @@ export default function Employees() {
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((row) => (
                   <StyledTableRow hover role="checkbox" tabIndex={-1} key={row.id}>
-                    <StyledTableCell>{row.name || 'N/A'}</StyledTableCell>
+                    <StyledTableCell>
+                      {row.name || 'N/A'}
+                    </StyledTableCell>
                     <StyledTableCell>{formatDateForTable(row.hiredDate)}</StyledTableCell>
                     <StyledTableCell>{row.employmentStatus || 'N/A'}</StyledTableCell>
                     <StyledTableCell>{row.email || 'N/A'}</StyledTableCell>

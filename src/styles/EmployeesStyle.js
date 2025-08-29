@@ -122,10 +122,36 @@ export const AddButton = styled.button`
   transition: all 0.2s ease;
   white-space: nowrap;
   height: 45px;
+  margin-left: 8px;
   
   &:hover {
     opacity: 0.9;
     transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
+export const FilterButton = styled.button`
+  background: white;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  height: 45px;
+  
+  &:hover {
+    background-color: #f5f5f5;
+    border-color: #999;
   }
   
   &:active {

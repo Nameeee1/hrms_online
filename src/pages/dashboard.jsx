@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MenuList from '../components/MenuList';
 import Logo from '../components/logo';
+import StatsCard from '../components/Card';
 import "../css/sidebar.css";
 import { MainContent, DashboardHeader, StyledWrapper, StyledCard, DepartmentCard, CardContent, CardIcon, CardTitle, DepartmentCardTitle, DepartmentCardValue } from '../styles/DashboardStyle';
 import { Typography, Card, Row, Col, Spin, Modal, List, Avatar, Layout } from 'antd';
@@ -41,9 +42,6 @@ export default function Dashboard() {
   const [collapsed, setCollapsed] = useState(true);
   const { departments, loading } = useDepartments();
   const { 
-    totalEmployees = 0, 
-    hhiCount = 0, 
-    rahyoCount = 0, 
     departmentCounts = {},
     loading: loadingEmployees,
     refreshDashboardData 
@@ -154,50 +152,22 @@ export default function Dashboard() {
         </DashboardHeader>
         <StyledWrapper>
   <div className="main-dashboard-layout">
-    <div className="cards-row">
-      {/* Left side - Total Employees */}
-      <div className="card">
-          <div className="user-icon-container">
-            <Users size={80} strokeWidth={1.5} color="#fff" />
-            <div className="employees-text">Total Employees</div>
-            {loadingEmployees ? (
-              <Spin size="large" style={{ margin: '10px 0' }} />
-            ) : (
-              <div className="employee-count">{totalEmployees.toLocaleString()}</div>
-            )}
-          </div>
-      </div>
-      
-      {/* Middle - RAHYO and HHI */}
-      <div className="right-cards">
-        <div className="card wider-card">
-          <div className="user-icon-container">
-            <Building2 strokeWidth={1.5} color="#fff"/>
-            <div className="employees-text" style={{ fontSize: '20px', fontWeight: 'bold', margin: '10px 0' }}>RAHYO</div>
-            {loadingEmployees ? (
-              <Spin size="large" style={{ margin: '10px 0' }} />
-            ) : (
-              <div className="employee-count" style={{ fontSize: '16px', fontWeight: '600' }}>
-                {rahyoCount.toLocaleString()}
-              </div>
-            )}
-          </div>
-        </div>
-        
-        <div className="card wider-card">
-          <div className="user-icon-container">
-            <Building2 strokeWidth={1.5} color="#fff" />
-            <div className="employees-text" style={{ fontSize: '20px', fontWeight: 'bold', margin: '10px 0' }}>HHI</div>
-            {loadingEmployees ? (
-              <Spin size="large" style={{ margin: '10px 0' }} />
-            ) : (
-              <div className="employee-count" style={{ fontSize: '16px', fontWeight: '600' }}>
-                {hhiCount.toLocaleString()}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+    <div className="cards-row" style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+      <StatsCard 
+        label="Total Employees" 
+        value="234" 
+        icon="Users"
+      />
+      <StatsCard 
+        label="RAHYO" 
+        value="150" 
+        icon="RAHYO"
+      />
+      <StatsCard 
+        label="HHI" 
+        value="84" 
+        icon="HHI"
+      />
     </div>
     
     {/* Departments Section */}

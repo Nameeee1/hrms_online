@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, doc, setDoc, getDocs, deleteDoc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, setDoc, getDocs, getDoc, deleteDoc, updateDoc, query, orderBy } from 'firebase/firestore';
 
 const STATUS_CATEGORIES_COLLECTION = 'statusCategories';
 
