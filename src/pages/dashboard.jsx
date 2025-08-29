@@ -302,8 +302,7 @@ export default function Dashboard() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f0f0f0' }}>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Employee</th>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Position</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Employee Name</th>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Email</th>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Contact</th>
               </tr>
@@ -311,22 +310,7 @@ export default function Dashboard() {
             <tbody>
               {employees.map((employee) => (
                 <tr key={employee.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <Avatar 
-                      style={{ 
-                        backgroundColor: '#1890ff',
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                      size="large"
-                    >
-                      {employee.firstName?.charAt(0)}{employee.lastName?.charAt(0)}
-                    </Avatar>
-                    <span>{`${employee.firstName} ${employee.lastName}`}</span>
-                  </td>
-                  <td style={{ padding: '12px' }}>{employee.position || '-'}</td>
+                  <td style={{ padding: '12px' }}>{`${employee.firstName || ''} ${employee.lastName || ''}`.trim() || '-'}</td>
                   <td style={{ padding: '12px' }}>{employee.email || '-'}</td>
                   <td style={{ padding: '12px' }}>{employee.contactNumber || '-'}</td>
                 </tr>
