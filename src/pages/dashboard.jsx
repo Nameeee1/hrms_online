@@ -44,7 +44,10 @@ export default function Dashboard() {
   const { 
     departmentCounts = {},
     loading: loadingEmployees,
-    refreshDashboardData 
+    refreshDashboardData,
+    activeEmployees = 0,
+    hhiCount = 0,
+    rahyoCount = 0
   } = useDashboard();
 
   // State for modal
@@ -52,6 +55,33 @@ export default function Dashboard() {
   const [modalTitle, setModalTitle] = useState('');
   const [employees, setEmployees] = useState([]);
   const [loadingEmployeesList, setLoadingEmployeesList] = useState(false);
+
+  // Fetch employees by organization
+  const fetchEmployeesByOrganization = async (organization) => {
+    try {
+      setLoadingEmployeesList(true);
+      const employeesRef = collection(db, 'employees');
+      const q = query(
+        employeesRef, 
+        where('organization', '==', organization),
+        where('status', '==', 'Active')
+      );
+      const querySnapshot = await getDocs(q);
+      
+      const employeesList = [];
+      querySnapshot.forEach((doc) => {
+        employeesList.push({ id: doc.id, ...doc.data() });
+      });
+      
+      setEmployees(employeesList);
+      setModalTitle(`Active Employees in ${organization}`);
+      setIsModalVisible(true);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    } finally {
+      setLoadingEmployeesList(false);
+    }
+  };
 
   // Fetch employees in a department
   const fetchEmployeesByDepartment = async (departmentName) => {
@@ -155,18 +185,23 @@ export default function Dashboard() {
     <div className="cards-row" style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
       <StatsCard 
         label="Total Employees" 
-        value="234" 
+        value={activeEmployees} 
         icon="Users"
+        sublabel="Active Employees"
       />
       <StatsCard 
         label="RAHYO" 
-        value="150" 
+        value={rahyoCount || 0} 
         icon="RAHYO"
+        onClick={() => fetchEmployeesByOrganization('RAHYO')}
+        style={{ cursor: 'pointer' }}
       />
       <StatsCard 
         label="HHI" 
-        value="84" 
+        value={hhiCount || 0} 
         icon="HHI"
+        onClick={() => fetchEmployeesByOrganization('HHI')}
+        style={{ cursor: 'pointer' }}
       />
     </div>
     

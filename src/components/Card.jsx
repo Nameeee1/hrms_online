@@ -12,10 +12,11 @@ const Card = styled.div`
   justify-content: space-between;
   align-items: center;
   transition: transform 0.2s, box-shadow 0.2s;
+  cursor: ${props => props.$clickable ? 'pointer' : 'default'};
   
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    transform: ${props => props.$clickable ? 'translateY(-2px)' : 'none'};
+    box-shadow: ${props => props.$clickable ? '0 4px 12px rgba(0,0,0,0.12)' : '0 2px 8px rgba(0,0,0,0.08)'};
   }
 `;
 
@@ -54,7 +55,7 @@ const Percentage = styled.span`
 `;
 
 const IconWrapper = styled.div`
-  background-color: ${({ bgColor }) => bgColor};
+  background-color: ${props => props.$bgColor};
   border-radius: 50%;
   width: 60px;
   height: 60px;
@@ -65,11 +66,18 @@ const IconWrapper = styled.div`
   svg {
     width: 28px;
     height: 28px;
-    color: ${({ iconColor }) => iconColor};
+    color: ${props => props.$iconColor};
   }
 `;
 
-const StatsCard = ({ label, value, percentage, icon }) => {
+const Sublabel = styled.span`
+  font-size: 10px;
+  color: #888;
+  margin-top: -2px;
+  margin-bottom: 4px;
+`;
+
+const StatsCard = ({ label, value, percentage, icon, sublabel, onClick, style }) => {
   const Icon = ({ name }) => {
     const iconProps = { size: 28 };
     switch(name) {
@@ -109,14 +117,20 @@ const StatsCard = ({ label, value, percentage, icon }) => {
   };
 
   return (
-    <Card>
+    <Card 
+      onClick={onClick}
+      style={style}
+      $clickable={!!onClick}
+    >
       <Info>
         <Label>{label}</Label>
         <Value>{value}</Value>
+        {sublabel && <Sublabel>{sublabel}</Sublabel>}
+        {percentage && <Percentage>{percentage} <span>vs last month</span></Percentage>}
       </Info>
       <IconWrapper 
-        bgColor={getIconBackground()}
-        iconColor={getIconColor()}
+        $bgColor={getIconBackground()}
+        $iconColor={getIconColor()}
       >
         <Icon name={icon} />
       </IconWrapper>
